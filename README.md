@@ -2,7 +2,7 @@
 
 # Derivation Notes :  
 
-This project is a fork of Damien Dallimore's original work available at <a href="https://github.com/damiendallimore/SplunkModularInputsJavaFramework/tree/master/kafka">https://github.com/damiendallimore/SplunkModularInputsJavaFramework/tree/master/kafka</a>.  This fork updates the Kafka libraries to support <em>Kafka 8.2.2<em> with <em>Scala 2.10<em> and <em>Java 1.8</em>.  
+This project is a fork of Damien Dallimore's original work available at <a href="https://github.com/damiendallimore/SplunkModularInputsJavaFramework/tree/master/kafka">https://github.com/damiendallimore/SplunkModularInputsJavaFramework/tree/master/kafka</a>.  This fork updates the Kafka libraries to support <em>Kafka 8.2.2</em> with <em>Scala 2.10<em> and <em>Java 1.8</em>.  
 
 The build.xml and properties are updated to build only the Kafka modular input, as that is all that I need.  Other than this, the only changes are the jar files for Kafka and the Splunk JDK.  
 
