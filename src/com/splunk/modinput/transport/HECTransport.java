@@ -13,7 +13,6 @@ import javax.net.ssl.SSLSession;
 
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
-
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.config.Registry;
@@ -31,13 +30,14 @@ import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
 import org.apache.http.ssl.SSLContexts;
 import org.apache.http.ssl.TrustStrategy;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.splunk.modinput.ModularInput;
 
 public class HECTransport implements Transport {
 
-	protected static Logger logger = Logger.getLogger(HECTransport.class);
+	protected static Logger logger = LoggerFactory.getLogger(HECTransport.class);
 
 	private HECTransportConfig config;
 	private CloseableHttpAsyncClient httpClient;
@@ -58,35 +58,27 @@ public class HECTransport implements Transport {
 	public void init(Object obj) {
 		config = (HECTransportConfig) obj;
 
-		this.batchBuffer = Collections
-				.synchronizedList(new LinkedList<String>());
+		this.batchBuffer = Collections.synchronizedList(new LinkedList<String>());
 		this.lastEventReceivedTime = System.currentTimeMillis();
 
 		try {
 
-			Registry<SchemeIOSessionStrategy> sslSessionStrategy = RegistryBuilder
-					.<SchemeIOSessionStrategy> create()
+			Registry<SchemeIOSessionStrategy> sslSessionStrategy = RegistryBuilder.<SchemeIOSessionStrategy> create()
 					.register("http", NoopIOSessionStrategy.INSTANCE)
-					.register(
-							"https",
-							new SSLIOSessionStrategy(getSSLContext(),
-									HOSTNAME_VERIFIER)).build();
+					.register("https", new SSLIOSessionStrategy(getSSLContext(), HOSTNAME_VERIFIER)).build();
 
 			ConnectingIOReactor ioReactor = new DefaultConnectingIOReactor();
-			PoolingNHttpClientConnectionManager cm = new PoolingNHttpClientConnectionManager(
-					ioReactor, sslSessionStrategy);
+			PoolingNHttpClientConnectionManager cm = new PoolingNHttpClientConnectionManager(ioReactor,
+					sslSessionStrategy);
 			cm.setMaxTotal(config.getPoolsize());
 
 			HttpHost splunk = new HttpHost(config.getHost(), config.getPort());
 			cm.setMaxPerRoute(new HttpRoute(splunk), config.getPoolsize());
 
-			httpClient = HttpAsyncClients.custom().setConnectionManager(cm)
-					.build();
+			httpClient = HttpAsyncClients.custom().setConnectionManager(cm).build();
 
-			uri = new URIBuilder()
-					.setScheme(config.isHttps() ? "https" : "http")
-					.setHost(config.getHost()).setPort(config.getPort())
-					.setPath("/services/collector").build();
+			uri = new URIBuilder().setScheme(config.isHttps() ? "https" : "http").setHost(config.getHost())
+					.setPort(config.getPort()).setPath("/services/collector").build();
 
 			httpClient.start();
 
@@ -95,8 +87,7 @@ public class HECTransport implements Transport {
 			}
 
 		} catch (Exception e) {
-			logger.error("Error initialising HEC Transport: "
-					+ ModularInput.getStackTrace(e));
+			logger.error("Error initialising HEC Transport: " + ModularInput.getStackTrace(e));
 		}
 
 	}
@@ -113,8 +104,7 @@ public class HECTransport implements Transport {
 				String currentMessage = "";
 				try {
 					long currentTime = System.currentTimeMillis();
-					if ((currentTime - lastEventReceivedTime) >= config
-							.getMaxInactiveTimeBeforeBatchFlush()) {
+					if ((currentTime - lastEventReceivedTime) >= config.getMaxInactiveTimeBeforeBatchFlush()) {
 						if (batchBuffer.size() > 0) {
 							currentMessage = rollOutBatchBuffer();
 							batchBuffer.clear();
@@ -134,15 +124,13 @@ public class HECTransport implements Transport {
 
 	private SSLContext getSSLContext() {
 		TrustStrategy acceptingTrustStrategy = new TrustStrategy() {
-			public boolean isTrusted(X509Certificate[] certificate,
-					String authType) {
+			public boolean isTrusted(X509Certificate[] certificate, String authType) {
 				return true;
 			}
 		};
 		SSLContext sslContext = null;
 		try {
-			sslContext = SSLContexts.custom()
-					.loadTrustMaterial(null, acceptingTrustStrategy).build();
+			sslContext = SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
 		} catch (Exception e) {
 			// Handle error
 		}
@@ -167,8 +155,7 @@ public class HECTransport implements Transport {
 		if (trimmedMessage.startsWith("{") && trimmedMessage.endsWith("}")) {
 			// this is *probably* JSON.
 			return trimmedMessage;
-		} else if (trimmedMessage.startsWith("\"")
-				&& trimmedMessage.endsWith("\"")
+		} else if (trimmedMessage.startsWith("\"") && trimmedMessage.endsWith("\"")
 				&& !message.substring(1, message.length() - 1).contains("\"")) {
 			// this appears to be a quoted string with no internal quotes
 			return trimmedMessage;
@@ -191,11 +178,9 @@ public class HECTransport implements Transport {
 			json.append("{\"").append("event\":").append(message).append(",\"");
 
 			if (!config.getIndex().equalsIgnoreCase("default"))
-				json.append("index\":\"").append(config.getIndex())
-						.append("\",\"");
+				json.append("index\":\"").append(config.getIndex()).append("\",\"");
 
-			json.append("source\":\"").append(config.getSource())
-					.append("\",\"");
+			json.append("source\":\"").append(config.getSource()).append("\",\"");
 
 			if (time != null && time.length() > 0)
 				json.append("time\":\"").append(time).append("\",\"");
@@ -203,8 +188,7 @@ public class HECTransport implements Transport {
 			if (host != null && host.length() > 0)
 				json.append("host\":\"").append(host).append("\",\"");
 
-			json.append("sourcetype\":\"").append(config.getSourcetype())
-					.append("\"").append("}");
+			json.append("sourcetype\":\"").append(config.getSourcetype()).append("\"").append("}");
 
 			currentMessage = json.toString();
 
@@ -223,8 +207,7 @@ public class HECTransport implements Transport {
 			}
 
 		} catch (Exception e) {
-			logger.error("Error writing received data via HEC: "
-					+ ModularInput.getStackTrace(e));
+			logger.error("Error writing received data via HEC: " + ModularInput.getStackTrace(e));
 		}
 
 	}
@@ -264,19 +247,16 @@ public class HECTransport implements Transport {
 		HttpPost post = new HttpPost(uri);
 		post.addHeader("Authorization", "Splunk " + config.getToken());
 
-		StringEntity requestEntity = new StringEntity(currentMessage,
-				ContentType.create("application/json", "UTF-8"));
+		StringEntity requestEntity = new StringEntity(currentMessage, ContentType.create("application/json", "UTF-8"));
 
 		post.setEntity(requestEntity);
 		Future<HttpResponse> future = httpClient.execute(post, null);
 		HttpResponse response = future.get();
 		int code = response.getStatusLine().getStatusCode();
 		if (code != 200) {
-			logger.error("Error sending HEC event , "
-					+ response.getStatusLine() + " , " + response.getEntity());
+			logger.error("Error sending HEC event , " + response.getStatusLine() + " , " + response.getEntity());
 		}
 
 	}
-
 
 }

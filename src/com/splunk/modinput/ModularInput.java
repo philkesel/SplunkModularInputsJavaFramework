@@ -15,8 +15,8 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.splunk.Args;
 import com.splunk.InputCollection;
@@ -27,23 +27,22 @@ import com.splunk.modinput.transport.Transport;
 
 public abstract class ModularInput {
 
-	protected static Logger logger = Logger.getLogger(ModularInput.class);
+	private static Logger logger = LoggerFactory.getLogger(ModularInput.class);
 
 	protected static Map<String, Boolean> inputStates = new HashMap<String, Boolean>();
 
 	protected boolean connectedToSplunk = false;
 
 	private static Map<String, String> transports = new HashMap<String, String>();
+
 	static {
 
-		transports.put("stdout",
-				"com.splunk.modinput.transport.STDOUTTransport");
+		transports.put("stdout", "com.splunk.modinput.transport.STDOUTTransport");
 		transports.put("hec", "com.splunk.modinput.transport.HECTransport");
 
 	}
 
-	protected Transport getTransportInstance(List<Param> params,
-			String stanzaName) {
+	protected Transport getTransportInstance(List<Param> params, String stanzaName) {
 		Transport instance = null;
 		String key = "stdout"; // default
 		HECTransportConfig hec = new HECTransportConfig();
@@ -76,8 +75,7 @@ public abstract class ModularInput {
 
 			} else if (param.getName().equals("hec_https")) {
 				try {
-					hec.setHttps(Boolean.parseBoolean(param.getValue().equals(
-							"1") ? "true" : "false"));
+					hec.setHttps(Boolean.parseBoolean(param.getValue().equals("1") ? "true" : "false"));
 				} catch (Exception e) {
 					logger.error("Can't determine hec https value, will revert to default value.");
 				}
@@ -93,8 +91,7 @@ public abstract class ModularInput {
 
 			} else if (param.getName().equals("hec_batch_mode")) {
 				try {
-					hec.setBatchMode(Boolean.parseBoolean(param.getValue()
-							.equals("1") ? "true" : "false"));
+					hec.setBatchMode(Boolean.parseBoolean(param.getValue().equals("1") ? "true" : "false"));
 				} catch (Exception e) {
 					logger.error("Can't determine batch_mode value, will revert to default value.");
 				}
@@ -113,19 +110,17 @@ public abstract class ModularInput {
 					logger.error("Can't determine max_batch_size_events value, will revert to default value.");
 				}
 
-			} else if (param.getName().equals(
-					"hec_max_inactive_time_before_batch_flush")) {
+			} else if (param.getName().equals("hec_max_inactive_time_before_batch_flush")) {
 				try {
-					hec.setMaxInactiveTimeBeforeBatchFlush(Long.parseLong(param
-							.getValue()));
+					hec.setMaxInactiveTimeBeforeBatchFlush(Long.parseLong(param.getValue()));
 				} catch (NumberFormatException e) {
-					logger.error("Can't determine max_inactive_time_before_batch_flush value, will revert to default value.");
+					logger.error(
+							"Can't determine max_inactive_time_before_batch_flush value, will revert to default value.");
 				}
 			}
 		}
 		try {
-			instance = (Transport) Class.forName(transports.get(key))
-					.newInstance();
+			instance = (Transport) Class.forName(transports.get(key)).newInstance();
 			instance.setStanzaName(stanzaName);
 			if (key.equalsIgnoreCase("hec"))
 				instance.init(hec);
@@ -141,8 +136,7 @@ public abstract class ModularInput {
 		try {
 			JAXBContext context = JAXBContext.newInstance(obj.getClass());
 			Marshaller marshaller = context.createMarshaller();
-			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT,
-					Boolean.TRUE);
+			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 			marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
 			StringWriter sw = new StringWriter();
 			marshaller.marshal(obj, sw);
@@ -161,8 +155,7 @@ public abstract class ModularInput {
 		try {
 			JAXBContext context = JAXBContext.newInstance(obj.getClass());
 			Marshaller marshaller = context.createMarshaller();
-			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT,
-					Boolean.TRUE);
+			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 			marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
 			StringWriter sw = new StringWriter();
 			marshaller.marshal(obj, sw);
@@ -225,9 +218,6 @@ public abstract class ModularInput {
 
 	protected void init(String[] args) {
 
-		String loggingLevel = System.getProperty("splunk.logging.level",
-				"ERROR");
-		logger.setLevel(Level.toLevel(loggingLevel));
 		logger.info("Initialising Modular Input");
 		try {
 			if (args.length == 1) {
@@ -253,18 +243,16 @@ public abstract class ModularInput {
 				System.exit(2);
 			}
 		} catch (Exception e) {
-			logger.error("Error executing modular input : " + e.getMessage()
-					+ " : " + ModularInput.getStackTrace(e));
+			logger.error("Error executing modular input : " + e.getMessage() + " : " + ModularInput.getStackTrace(e));
 
 			System.exit(2);
 		}
 
 	}
 
-	protected void createTCPInput(Input input, int tcpPort, String index,
-			String sourcetype, String source) {
+	protected void createTCPInput(Input input, int tcpPort, String index, String sourcetype, String source) {
 
-		String host = input.getServer_host();
+		String inputServerHost = input.getServer_host();
 		String uri = input.getServer_uri();
 		int port = 8089;
 		String token = input.getSession_key();
@@ -272,7 +260,7 @@ public abstract class ModularInput {
 			int portOffset = uri.indexOf(":", 8);
 			port = Integer.parseInt(uri.substring(portOffset + 1));
 		} catch (Exception e) {
-
+			logger.error("Exception creating TCP input: ",e);
 		}
 		Service service = new Service("localhost", port);
 		service.setToken("Splunk " + token);
@@ -286,13 +274,12 @@ public abstract class ModularInput {
 			args.add("sourcetype", sourcetype);
 			args.add("source", sourcetype);
 
-			service.getInputs().create(String.valueOf(tcpPort), InputKind.Tcp,
-					args);
+			service.getInputs().create(String.valueOf(tcpPort), InputKind.Tcp, args);
 		}
 	}
 
-	protected String createHECInput(Input input, int hecPort, String index,
-			String sourcetype, String source, boolean https) {
+	protected String createHECInput(Input input, int hecPort, String index, String sourcetype, String source,
+			boolean https) {
 
 		String host = input.getServer_host();
 		String uri = input.getServer_uri();
@@ -302,7 +289,7 @@ public abstract class ModularInput {
 			int portOffset = uri.indexOf(":", 8);
 			port = Integer.parseInt(uri.substring(portOffset + 1));
 		} catch (Exception e) {
-
+			logger.error("Exception creating HEC input: ",e);
 		}
 		Service service = new Service("localhost", port);
 		service.setToken("Splunk " + token);
@@ -326,10 +313,7 @@ public abstract class ModularInput {
 			for (Param param : params) {
 				if (param.getName().equals("disabled")) {
 					String val = param.getValue();
-					setDisabled(
-							stanza.getName(),
-							val.equals("0") || val.equalsIgnoreCase("false") ? false
-									: true);
+					setDisabled(stanza.getName(), val.equals("0") || val.equalsIgnoreCase("false") ? false : true);
 
 				}
 			}
@@ -374,17 +358,14 @@ public abstract class ModularInput {
 					try {
 						int index = stanza.indexOf("://");
 						// REST call to get state of input
-						com.splunk.Input input = service.getInputs().get(
-								stanza.substring(index + 3));
+						com.splunk.Input input = service.getInputs().get(stanza.substring(index + 3));
 						boolean isDisabled = input.isDisabled();
 						// update state map
 						setDisabled(stanza, isDisabled);
 						enabledCount += isDisabled ? 0 : 1;
 					} catch (Exception e) {
-						logger.error("Can't connect to Splunk REST API with the token ["
-								+ service.getToken()
-								+ "], either the token is invalid or SplunkD has exited : "
-								+ e.getMessage());
+						logger.error("Can't connect to Splunk REST API with the token [" + service.getToken()
+								+ "], either the token is invalid or SplunkD has exited : " + e.getMessage());
 					}
 				}
 				try {
@@ -407,8 +388,7 @@ public abstract class ModularInput {
 
 	}
 
-	protected synchronized static void setDisabled(String stanza,
-			boolean isDisabled) {
+	protected synchronized static void setDisabled(String stanza, boolean isDisabled) {
 
 		inputStates.put(stanza, isDisabled);
 
@@ -443,10 +423,9 @@ public abstract class ModularInput {
 						connectedToSplunk = true;
 						failCount = 0;
 					} catch (Exception e) {
-						logger.error("Probing socket connection to SplunkD failed.Either SplunkD has exited ,or if not,  check that your DNS configuration is resolving your system's hostname ("
-								+ this.splunkHost
-								+ ") correctly : "
-								+ e.getMessage());
+						logger.error(
+								"Probing socket connection to SplunkD failed.Either SplunkD has exited ,or if not,  check that your DNS configuration is resolving your system's hostname ("
+										+ this.splunkHost + ") correctly : " + e.getMessage());
 						failCount++;
 						connectedToSplunk = false;
 					} finally {
@@ -498,8 +477,7 @@ public abstract class ModularInput {
 				}
 			}
 		} catch (Throwable e) {
-			logger.error("Error setting JVM system propertys from string : "
-					+ propsString + " : " + getStackTrace(e));
+			logger.error("Error setting JVM system propertys from string : " + propsString + " : " + getStackTrace(e));
 		}
 
 	}

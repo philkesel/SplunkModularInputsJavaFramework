@@ -124,7 +124,7 @@
                 dir="${temp_build}/${classes}"
                 includes="com/splunk/modinput/**" />
 
-            <fileset file="${src}/log4j.xml" />
+            <fileset file="${src}/log*.xml" />
         </jar>
 
         <delete dir="${temp_build}/${classes}" />

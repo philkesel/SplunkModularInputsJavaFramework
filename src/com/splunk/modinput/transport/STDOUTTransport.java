@@ -7,24 +7,25 @@ import java.util.List;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.splunk.modinput.Stream;
 import com.splunk.modinput.StreamEvent;
 
 public class STDOUTTransport implements Transport {
 
-	protected static Logger logger = Logger.getLogger(STDOUTTransport.class);
-	
+	private static Logger logger = LoggerFactory.getLogger(STDOUTTransport.class);
+
 	private String stanzaName = "";
-	
+
 	@Override
 	public void init(Object obj) {
 		// do nothing
 
 	}
-	
-	public void setStanzaName(String name){
+
+	public void setStanzaName(String name) {
 		this.stanzaName = name;
 	}
 
@@ -47,13 +48,12 @@ public class STDOUTTransport implements Transport {
 		stream.setEvents(list);
 		marshallObjectToXML(stream);
 	}
-	
+
 	public static void marshallObjectToXML(Object obj) {
 		try {
 			JAXBContext context = JAXBContext.newInstance(obj.getClass());
 			Marshaller marshaller = context.createMarshaller();
-			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT,
-					Boolean.TRUE);
+			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 			marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
 			StringWriter sw = new StringWriter();
 			marshaller.marshal(obj, sw);
@@ -66,10 +66,10 @@ public class STDOUTTransport implements Transport {
 			logger.error("Error writing XML : " + e.getMessage());
 		}
 	}
+
 	private List<String> chunkData(String text, int size) {
 
-		List<String> ret = new ArrayList<String>((text.length() + size - 1)
-				/ size);
+		List<String> ret = new ArrayList<String>((text.length() + size - 1) / size);
 
 		for (int start = 0; start < text.length(); start += size) {
 			ret.add(text.substring(start, Math.min(text.length(), start + size)));
@@ -78,9 +78,9 @@ public class STDOUTTransport implements Transport {
 	}
 
 	@Override
-	public void transport(String message, String time,String host) {
+	public void transport(String message, String time, String host) {
 		transport(message);
-		
+
 	}
 
 }
